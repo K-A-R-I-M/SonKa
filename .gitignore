@@ -1,0 +1,25 @@
+# IDE file #
+############
+.idea
+*.log
+__pycache__
+
+# DEV file #
+############
+test.py
+memoire_playlist/*.json
+audio/*.wav
+audio/*.exe
+audio/*.mp3
+audio/SonKa_sound/*.wav*
+audio/SonKa_sound/*.mp3
+nom/*.ka
+audio
+memoire_playlist
+nom
+images/*.png
+debug
+data
+
+
+

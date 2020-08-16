@@ -1,4 +1,3 @@
-import simpleaudio as sa
 import vlc
 from threading import Thread
 from recherche_youtube import RechercheLienYoutube
@@ -6,10 +5,11 @@ import os
 import youtube_dl
 from time import sleep
 from win10toast import ToastNotifier
+import Memory as memory
 
 
 class LecteurAudio(Thread):
-    dos_telechargement = "audio"
+    dos_telechargement = memory.dir_audio
 
     def __init__(self):
         super().__init__()
@@ -22,6 +22,9 @@ class LecteurAudio(Thread):
         #demarrage
         self._demarrage()
         self._notif = ToastNotifier()
+        self._pause = False
+        self._cour_playlist = []
+        self._nb_cour_playlist_music = None
 
     def run(self):
         super().run()
@@ -35,10 +38,13 @@ class LecteurAudio(Thread):
                     sleep(3)
                     while self._play_obj != None:
 
-                        if self._play_obj.get_length() - self._play_obj.get_time() < 1000:
-                            self._play_obj.stop()
-                            self._play_obj = None
-                            break
+                        try:
+                            if self._play_obj.get_length() - self._play_obj.get_time() < 1000:
+                                self._play_obj.stop()
+                                self._play_obj = None
+                                break
+                        except Exception as e:
+                            print("Ya eu un probleme mais tkt")
 
                         sleep(2)
                     self._nb_courant_mus += 1
@@ -97,9 +103,9 @@ class LecteurAudio(Thread):
 
     '''---------------------outil d'affichage----------------------'''
     def _aff_encad(self, txt):
-        print("-----------------------------------")
+        print(memory.trait)
         print(txt)
-        print("-----------------------------------")
+        print(memory.trait)
 
 
     '''---------------------Telechargement----------------------'''
@@ -112,23 +118,24 @@ class LecteurAudio(Thread):
 
         # telecharge musique
         ydl_opts = {
-            'audioformat': "wav",
+            'audioformat': "mp3",
             'format': 'bestaudio/best',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'wav',
+                'preferredcodec': 'mp3',
                 'preferredquality': '192',
             }],
         }
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
+
         with os.scandir("./") as fichiers:
             for fichier in fichiers:
 
-                if self._se_termine_par(fichier.name, ".wav") and self._commence_par(fichier.name, "song_") == False:
+                if self._se_termine_par(fichier.name, ".mp3") and self._commence_par(fichier.name, "song_") == False:
                     print("trouver")
-                    os.rename(fichier, 'song_' + str(nb) + '_nb.wav')
+                    os.rename(fichier, 'song_' + str(nb) + '_nb.mp3')
                     break
 
 
@@ -163,7 +170,7 @@ class LecteurAudio(Thread):
         self._verif_dos()
         nb = self._nb_courant_mus - 1
 
-        filename = 'song_' + str(nb) + '_nb.wav'
+        filename = 'song_' + str(nb) + '_nb.mp3'
         os.remove("./"+filename)
 
     '''---------------------Gestion audio----------------------'''
@@ -180,7 +187,7 @@ class LecteurAudio(Thread):
 
 
 
-        filename = 'song_' + str(nb) + '_nb.wav'
+        filename = 'song_' + str(nb) + '_nb.mp3'
         player = vlc.MediaPlayer(filename)
         player.play()
 
@@ -192,8 +199,32 @@ class LecteurAudio(Thread):
         return player
 
     def pause(self):
+        if self._pause == True:
+
+
+            player = vlc.MediaPlayer("./SonKa_sound/play.wav")
+            player.play()
+
+            sleep(0.2)
+
+
         if self._play_obj != None:
             self._play_obj.pause()
+
+
+        if  self._pause == False:
+
+            player = vlc.MediaPlayer("./SonKa_sound/pause.wav")
+            player.play()
+
+
+        if self._pause == False:
+            self._pause = True
+        else:
+            self._pause = False
+
+
+
 
     def next(self):
         if self._play_obj != None and self._nb_courant_mus < self._chercheur.getNbRecheche():
@@ -210,6 +241,28 @@ class LecteurAudio(Thread):
                 sleep(0.5)
                 self._play_obj.pause()
             print("next impossible")
+
+    def next_playlist(self):
+        print("pas encore dispo car refonte total necessaire")
+        """if self._nb_cour_playlist_music == None:
+            self._nb_cour_playlist_music = self._cour_playlist[0]
+        nb = self._nb_cour_playlist_music
+        if nb == 1:
+            self.next()
+        else:
+            for i in range(nb):
+                if i != 0:
+                    self._verif_dos()
+                    with os.scandir("./") as fichiers:
+                        for fichier in fichiers:
+                            if fichier.name == 'song_' + str(i+self._nb_courant_mus) + '_nb.mp3':
+                                print(fichier.name)
+                                sleep(3)                     
+        self._nb_courant_mus += nb
+        next()
+        
+        self._cour_playlist.pop(0)
+        self._nb_cour_playlist_music = self._cour_playlist[0]"""
 
     '''---------------------Gestion Queue----------------------'''
 
@@ -234,3 +287,19 @@ class LecteurAudio(Thread):
 
     def getChercheur(self):
         return self._chercheur
+
+    def add_launch(self, nb=1):
+        self._cour_playlist.append(nb)
+
+    def __str__(self):
+        txt = ""
+        if len(self._queue) == 0:
+            txt = " la file de lecture est vide ! "
+        else:
+            for nb_audio_titre in range(len(self._queue)):
+                if nb_audio_titre != len(self._queue) - 1:
+                    txt += str(nb_audio_titre) +" - "+self._queue[nb_audio_titre]+"\n"
+                else:
+                    txt += str(nb_audio_titre) +" - "+self._queue[nb_audio_titre]
+        return txt
+

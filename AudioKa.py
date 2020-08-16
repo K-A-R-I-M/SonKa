@@ -11,6 +11,12 @@ class AudioKa():
     def getUrl(self):
         return self._url
 
+    def setTitre(self, _titre:str):
+        self._titre = _titre
+
+    def setUrl(self, _url:str):
+        self._url = _url
+
     def toJson(self):
         return json.dumps(self, default=lambda o: o.__dict__)
 

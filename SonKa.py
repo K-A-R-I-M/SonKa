@@ -1,7 +1,5 @@
-import youtube_dl
 from recherche_youtube import RechercheLienYoutube
 import os
-import sys
 from LecteurAudio import LecteurAudio
 from time import sleep
 from PlaylistKa import PlaylistKa
@@ -9,8 +7,8 @@ from ContPlaylistKa import ContPlaylistKa
 from AudioKa import AudioKa
 from pynput.keyboard import Listener
 from threading import Thread
-from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu
-from PyQt5.QtGui import QIcon
+from playlist_youtube import playliste_youtube
+import Memory as memory
 
 
 prog_etat = True
@@ -19,7 +17,6 @@ conteneur_playlist = None
 lecteur = None
 dossiers = [PlaylistKa.memoire, LecteurAudio.dos_telechargement]
 detection_commande_th = None
-app = QApplication(sys.argv)
 
 """--------fontions utiles-------------"""
 
@@ -30,9 +27,9 @@ def net_titre(txt: str):
 
 
 def aff_encad(txt):
-	print("-----------------------------------")
+	print(memory.trait)
 	print(txt)
-	print("-----------------------------------")
+	print(memory.trait)
 
 def suppr_a_partir(txt, c):
 	tmp = ""
@@ -86,9 +83,9 @@ def trad_commande(key):
 	global lecteur
 	keydata = str(key)
 	if lecteur != None:
-		if keydata == "Key.media_play_pause" and lecteur != None:
+		if keydata == memory.default_play_pause and lecteur != None:
 			lecteur.pause()
-		elif keydata == "Key.media_next" and lecteur != None:
+		elif keydata == memory.default_next and lecteur != None:
 			lecteur.next()
 
 def detection_clavier():
@@ -112,34 +109,46 @@ def main():
 	conteneur_playlist_init()
 	detection_commande_th_init()
 
-	messageBvn = "\nBienvenue dans le lecteur youtube YlistKa(beta)"
-	print(messageBvn)
-	sleep(1)
+	#taille fenetre
+	os.system("mode con cols=60 lines=20")
+
+	#presentation
+	presentation_demarrage()
+
 
 	while prog_etat:
 		try:
 
 			clear()
 
-			menuPrincipal = "----------------------------------------------\n"
-			menuPrincipal += " 1 - jouer qqchose\n"
-			menuPrincipal += " 2 - pause/reprendre qqchose\n"
-			menuPrincipal += " 3 - next qqchose\n"
-			menuPrincipal += " 4 - arreter qqchose\n"
-			menuPrincipal += " 5 - menu playlist qqchose\n"
-			menuPrincipal += " 6 - sortir\n"
-			menuPrincipal += "----------------------------------------------\n"
+			menuPrincipal = memory.trait_2 + "\n"
+			menuPrincipal += " 1 - jouer un audio\n"
+			menuPrincipal += " 2 - pause/reprendre l'audio\n"
+			menuPrincipal += " 3 - next audio\n"
+			menuPrincipal += " 4 - afficher le file de lecture\n"
+			menuPrincipal += memory.trait_2 + "\n"
+			menuPrincipal += " 5 - menu playlist\n"
+			menuPrincipal += " 6 - arreter/redemarrer le systeme de lecture audio\n"
+			menuPrincipal += " 7 - credits \n"
+			menuPrincipal += memory.trait_2 + "\n"
+			menuPrincipal += " 1234 - sortir \n"
+			menuPrincipal += memory.trait_2
 
-			choix = int(input(menuPrincipal))
+			aff_encad(menuPrincipal)
 
+			choix = int(input())
 			if (choix == 1):
+
 				titre_rech = input('titre : \n')
+
 				if lecteur == None:
 					lecteur = LecteurAudio()
 					lecteur.ajt_queue(titre_rech)
 					lecteur.start()
 				else:
 					lecteur.ajt_queue(titre_rech)
+
+				lecteur.add_launch()
 
 			elif (choix == 2):
 				if lecteur != None:
@@ -154,7 +163,19 @@ def main():
 				else:
 					print("next impossible pas de lecteur\n")
 
+
 			elif (choix == 4):
+				if lecteur != None:
+					print(lecteur)
+				else:
+					print(" Depuis le lancement aucun audio n'a été lancer\n cela va etre dificile de vous faire une liste de tout ce qui compose le vide mais bon...\n hummm....\n bah rien en faite\n lol\n ")
+				input("Appuyer sur entree pour continuer !!")
+
+			elif (choix == 5):
+				menu_playlist()
+
+
+			elif (choix == 6):
 				if lecteur != None:
 					lecteur.eteindre()
 					lecteur = None
@@ -162,21 +183,21 @@ def main():
 				else:
 					print("arret impossible \n")
 
-			elif (choix == 5):
-				menu_playlist()
 
-			elif (choix == 6):
+			elif (choix == 7):
+				credit_SonKa()
+
+			elif (choix == 1234):
 				if lecteur != None:
 					lecteur.eteindre()
 					lecteur = None
 
 				print("Au Revoir")
 				prog_etat = False
-				"""app.quit()
-				sys.exit(app.exec_())"""
 
 			else:
 				aff_encad("Saisie incorrecte")
+
 
 		except Exception as e:
 			print("Erreur : ")
@@ -186,11 +207,11 @@ def main():
 def aff_tout_playlist():
 	nb = 0
 	if conteneur_playlist != None:
-		print("--------------------------------")
+		print(memory.trait)
 		for playlist in conteneur_playlist.getListPlaylist():
 			print(str(nb)+" - " + str(playlist.getTitre()))
 			nb += 1
-		print("--------------------------------")
+		print(memory.trait)
 
 	else:
 		print("aucune playlist existante")
@@ -221,14 +242,22 @@ def menu_playlist():
 
 			clear()
 
-			aff_encad("Menu Playlist")
+			aff_encad("			Menu Playlist			")
 
-			msgPresentationChoix = " 1 - crée une playliste\n"
+			msgPresentationChoix = memory.trait_2 + "\n"
+			msgPresentationChoix += " 1 - crée une playlist\n"
+			msgPresentationChoix += memory.trait_2+"\n"
 			msgPresentationChoix += " 2 - afficher tout les playlists existantes\n"
-			msgPresentationChoix += " 3 - affichage d'une playlist\n"
+			msgPresentationChoix += " 3 - afficher une playlist\n"
+			msgPresentationChoix += memory.trait_2+"\n"
 			msgPresentationChoix += " 4 - gerer une playlist\n"
 			msgPresentationChoix += " 5 - jouer une playlist\n"
-			msgPresentationChoix += " 6 - quitter"
+			msgPresentationChoix += " 6 - importer une playliste youtube\n"
+			msgPresentationChoix += memory.trait_2+"\n"
+			msgPresentationChoix += " 7 - skip la playlist courante\n"
+			msgPresentationChoix += memory.trait_2+"\n"
+			msgPresentationChoix += " 123 - quitter\n"
+			msgPresentationChoix += memory.trait_2
 
 			aff_encad(msgPresentationChoix)
 
@@ -253,7 +282,7 @@ def menu_playlist():
 			elif choix == 3:
 				playlist_aff = choix_playlist()
 				if playlist_aff != None:
-					print(playlist_aff)
+					aff_encad(playlist_aff)
 
 			elif choix == 4:
 				playlist = choix_playlist()
@@ -274,12 +303,34 @@ def menu_playlist():
 				else:
 					print("impossible de jouer cet playlist")
 
-			else:
+			elif choix == 6:
+				titre = input("nom de la playliste : ")
+				url = input("url de la playliste : ")
+				nv_playlist_yt = playliste_youtube(titre_playlist=titre, url=url)
+
+				if nv_playlist_yt != None:
+					if conteneur_playlist != None:
+						conteneur_playlist.ajout(nv_playlist_yt)
+
+					else:
+						conteneur_playlist = ContPlaylistKa()
+						conteneur_playlist.ajout(nv_playlist_yt)
+				else:
+					print("Lien defectueux")
+
+			elif choix == 7:
+				lecteur.next_playlist()
+
+			elif choix == 123:
 				break
+
+			else:
+				aff_encad("Saisie incorrecte")
 
 		except Exception as e:
 			print("Erreur : ")
 			print(e)
+
 		sleep(1)
 """--------------------fonction utiles pour menu gestion playlist-----------------------"""
 def choix_audio(playlist:PlaylistKa):
@@ -304,13 +355,18 @@ def menu_gestion_playlist(playlist:PlaylistKa):
 
 			clear()
 
-			aff_encad("Menu Gestion d'une Playlist \n"+playlist.getTitre())
+			aff_encad("		Menu Gestion d'une Playlist		\n		"+playlist.getTitre())
 
-			msgPresentationChoix = " 1 - ajout d'audio dans la playlist\n"
-			msgPresentationChoix += " 2 - suppression d'un audio dans la playlist\n"
-			msgPresentationChoix += " 3 - affichage d'une playlist\n"
+			msgPresentationChoix = memory.trait_2 + "\n"
+			msgPresentationChoix += " 1 - ajouter un audio à la playlist\n"
+			msgPresentationChoix += " 2 - supprimer un audio de la playlist\n"
+			msgPresentationChoix += memory.trait_2 + "\n"
+			msgPresentationChoix += " 3 - afficher la playlist\n"
+			msgPresentationChoix += memory.trait_2 + "\n"
 			msgPresentationChoix += " 4 - sauvegarder la playlist\n"
-			msgPresentationChoix += " 5 - quitter"
+			msgPresentationChoix += memory.trait_2 + "\n"
+			msgPresentationChoix += " 123 - quitter\n"
+			msgPresentationChoix += memory.trait_2
 
 			aff_encad(msgPresentationChoix)
 
@@ -336,19 +392,45 @@ def menu_gestion_playlist(playlist:PlaylistKa):
 
 			elif choix == 3:
 				if playlist != None:
-					print(playlist)
+					aff_encad(playlist)
 
 			elif choix == 4:
 				if playlist != None:
 					playlist.sauvegarder()
 
-			else:
+			elif choix == 123:
 				break
+
+			else:
+				aff_encad("Saisie incorrecte")
 
 		except Exception as e:
 			print("Erreur :")
 			print(e)
 		sleep(1)
+
+def credit_SonKa():
+	clear()
+	print(memory.trait)
+	aff_encad("Inventé et developé par KARIM aka K-A-R-I-M")
+	print(memory.trait)
+	sleep(2)
+
+def presentation_demarrage():
+	sleep(1)
+	clear()
+	messageBvn = "\nBienvenue dans SonKa v1.0"
+	print(messageBvn)
+	sleep(1)
+	clear()
+
+	nom_styler = "\n"
+
+	with open("nom/nom.ka", "r") as f:
+		for ligne in f.readlines():
+			nom_styler += ligne
+	print(nom_styler)
+	sleep(2)
 
 main()
 #partie_graphique()

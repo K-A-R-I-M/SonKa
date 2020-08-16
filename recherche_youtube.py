@@ -52,6 +52,7 @@ class RechercheLienYoutube():
 
         return titre, url_trouv
 
+
     def getNbRecheche(self):
         return self.nb_recherche
 

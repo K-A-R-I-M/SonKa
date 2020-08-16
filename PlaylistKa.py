@@ -3,9 +3,13 @@ from time import sleep
 import json
 from json import dump
 import os
+import vlc
+from recherche_youtube import RechercheLienYoutube
+from LecteurAudio import LecteurAudio
+import Memory as memory
 
 class PlaylistKa():
-    memoire = "memoire_playlist"
+    memoire = memory.dir_sauvegarde_playlist
 
     def __init__(self, titre):
         self._titre = titre
@@ -42,10 +46,30 @@ class PlaylistKa():
     def getAudios(self):
         return self._audios
 
-    def lancer(self, lecteur=None):
+    """--------fonction utile--------"""
+    def _se_termine_par(self, txt, mot):
+        succes = True
+        if (len(txt) < len(mot)):
+            succes = False
+        else:
+            i = len(mot) - 1
+            j = len(txt) - 1
+            while (i > 0):
+                if txt[j] != mot[i]:
+                    return False
+                j -= 1
+                i -= 1
+        return succes
+    """---------------------------"""
+
+    def lancer(self, lecteur:LecteurAudio=None):
+
         if lecteur != None:
             if self.estVide() == False:
                 nb = lecteur.getChercheur().getNbRecheche() + 1
+
+                lecteur.add_launch(len(self._audios))
+
                 for audio in self._audios:
 
                     titre = audio.getTitre()
@@ -54,7 +78,33 @@ class PlaylistKa():
 
                     lecteur._queue.append(titre)
 
-                    lecteur._telecharge_musique(url, nb=nb)
+                    try:
+
+                        lecteur._telecharge_musique(url, nb=nb)
+
+                    except Exception as e:
+
+                        if self._se_termine_par(str(e), "YouTube said: Unable to extract video data"):
+                            lecteur.pause()
+                            # audio erreur
+                            player = vlc.MediaPlayer("./SonKa_sound/erreur_audio_non_telecharger.mp3")
+                            player.play()
+                            sleep(3)
+
+                            # recherche sur youtube de nv lien et telechargement
+                            recherche_rafrai = RechercheLienYoutube()
+                            titre_rafrai, url_rafrai = recherche_rafrai.recherche(titre)
+                            lecteur.pause()
+
+                            audio.setUrl(url_rafrai)
+                            audio.setTitre(titre_rafrai)
+
+                            print("rafrachissement de votre playlist")
+                            lecteur._telecharge_musique(url_rafrai, nb=nb)
+                            
+                            if self._est_sauvegarder():
+                                self.sauvegarder()
+
 
                     print("ajout a la file de lecture")
 
@@ -72,7 +122,29 @@ class PlaylistKa():
             print("lecteur inexistant")
         sleep(1)
 
+    def _verif_dos(self):
+        try:
+            # verification du dossier et/ou changement de dossier
+            if self._se_termine_par(os.getcwd(), LecteurAudio.dos_telechargement) == True:
+                os.chdir("..")
+        except Exception as e:
+            print("ERREUR :")
+            print(e)
+        
+    def _est_sauvegarder(self):
+        # verification du dossier de localisation
+        self._verif_dos()
+
+        with os.scandir("./"+PlaylistKa.memoire+"/") as fichiers:
+            for fichier  in fichiers:
+                if fichier.name == str(self._titre)+".json":
+                    return True
+        return False
+
     def sauvegarder(self):
+        #verification du dossier de localisation
+        self._verif_dos()
+
         print("Lancement de la Sauvegarde...")
         sleep(1)
         playlist_actu = self
@@ -96,15 +168,18 @@ class PlaylistKa():
         return audios_traité
 
 
+    def _aff_audio(self, nb_audio:int, txt:str=""):
+        titre = self._audios[nb_audio].getTitre()
+        return str(nb_audio) + " - " + titre + txt
 
     def __str__(self):
         if self.estVide() == False:
-            aff = ""
-            nb = 0
-            for audio in self._audios:
-                titre = audio.getTitre()
-                aff += str(nb)+" - "+titre+"\n"
-                nb += 1
+            aff = "\n"
+            for nb_audio in range(len(self._audios)):
+                if nb_audio != len(self._audios):
+                    aff += self._aff_audio(nb_audio, "\n")
+                else:
+                    aff += self._aff_audio(nb_audio)
             return aff
         else:
             return "playlist vide"
