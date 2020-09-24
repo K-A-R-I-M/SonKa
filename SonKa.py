@@ -1,12 +1,14 @@
 from recherche_youtube import RechercheLienYoutube
 import os
+from os import system
 from LecteurAudio import LecteurAudio
 from time import sleep
 from PlaylistKa import PlaylistKa
 from ContPlaylistKa import ContPlaylistKa
 from AudioKa import AudioKa
-from pynput.keyboard import Listener
-from threading import Thread
+
+import keyboard
+
 from playlist_youtube import playliste_youtube
 import Memory as memory
 
@@ -15,8 +17,11 @@ prog_etat = True
 chercheur = RechercheLienYoutube()
 conteneur_playlist = None
 lecteur = None
-dossiers = [PlaylistKa.memoire, LecteurAudio.dos_telechargement]
+dossiers = [PlaylistKa.memoire, LecteurAudio.dos_telechargement, memory.dos_memoire_touche]
 detection_commande_th = None
+version = "3.0"
+titre_fenetre = "SonKa "+version+"____ by K-A-R-I-M"
+
 
 """--------fontions utiles-------------"""
 
@@ -40,7 +45,7 @@ def suppr_a_partir(txt, c):
 	return tmp
 
 def clear():
-	print(chr(27) + "[2J")
+	print('\033c')
 
 """--------------------------------INITIALISATION------------------------------------"""
 """----------------initialisation de la memoire--------------------"""
@@ -75,39 +80,37 @@ def conteneur_playlist_init():
 
 def detection_commande_th_init():
 	global detection_commande_th
-	detection_commande_th = Thread(target=detection_clavier)
-	detection_commande_th.start()
+	trad_commande()
+
 
 """----------------detection et trad touche du clavier--------------------"""
-def trad_commande(key):
+def trad_commande():
+	keyboard.add_hotkey(str(memory.default_play_pause), pause_hotkey)
+	keyboard.add_hotkey(str(memory.default_next), next_hotkey)
+def pause_hotkey():
 	global lecteur
-	keydata = str(key)
 	if lecteur != None:
-		if keydata == memory.default_play_pause and lecteur != None:
-			lecteur.pause()
-		elif keydata == memory.default_next and lecteur != None:
-			lecteur.next()
-
-def detection_clavier():
-	global prog_etat
-	with Listener(on_press=trad_commande) as l:
-		while prog_etat == True:
-			sleep(2)
-			if prog_etat == False:
-				l.stop()
-
-		l.join()
-
+		lecteur.pause()
+	else:
+		print("action impossible lecteur inexistant")
+def next_hotkey():
+	global lecteur
+	if lecteur != None:
+		lecteur.next()
+	else:
+		print("action impossible lecteur inexistant")
 
 """----------------main--------------------"""
 def main():
 
-	global prog_etat, lecteur, detection_commande_th, app
+	global prog_etat, lecteur, detection_commande_th, titre_fenetre
 
 	#initialisation
+	system("title "+titre_fenetre)
 	memoire_init()
 	conteneur_playlist_init()
 	detection_commande_th_init()
+
 
 	#taille fenetre
 	os.system("mode con cols=60 lines=20")
@@ -128,8 +131,10 @@ def main():
 			menuPrincipal += " 4 - afficher le file de lecture\n"
 			menuPrincipal += memory.trait_2 + "\n"
 			menuPrincipal += " 5 - menu playlist\n"
+			menuPrincipal += memory.trait_2 + "\n"
 			menuPrincipal += " 6 - arreter/redemarrer le systeme de lecture audio\n"
 			menuPrincipal += " 7 - credits \n"
+			menuPrincipal += " 8 - parametre\n"
 			menuPrincipal += memory.trait_2 + "\n"
 			menuPrincipal += " 1234 - sortir \n"
 			menuPrincipal += memory.trait_2
@@ -143,10 +148,12 @@ def main():
 
 				if lecteur == None:
 					lecteur = LecteurAudio()
-					lecteur.ajt_queue(titre_rech)
-					lecteur.start()
+					audio_moment = PlaylistKa(titre_rech, momentaner=True)
+					audio_moment.lancer(lecteur)
+
 				else:
-					lecteur.ajt_queue(titre_rech)
+					audio_moment = PlaylistKa(titre_rech, momentaner=True)
+					audio_moment.lancer(lecteur)
 
 				lecteur.add_launch()
 
@@ -168,7 +175,7 @@ def main():
 				if lecteur != None:
 					print(lecteur)
 				else:
-					print(" Depuis le lancement aucun audio n'a été lancer\n cela va etre dificile de vous faire une liste de tout ce qui compose le vide mais bon...\n hummm....\n bah rien en faite\n lol\n ")
+					aff_encad(" Depuis le lancement aucun audio n'a été lancer\n cela va etre dificile de vous faire une liste de tout ce qui compose le vide mais bon...\n hummm....\n bah rien en faite\n lol\n ")
 				input("Appuyer sur entree pour continuer !!")
 
 			elif (choix == 5):
@@ -186,6 +193,9 @@ def main():
 
 			elif (choix == 7):
 				credit_SonKa()
+
+			elif (choix == 8):
+				parametre()
 
 			elif (choix == 1234):
 				if lecteur != None:
@@ -408,18 +418,20 @@ def menu_gestion_playlist(playlist:PlaylistKa):
 			print("Erreur :")
 			print(e)
 		sleep(1)
-
+"""----------------------Credit------------------------"""
 def credit_SonKa():
+	global version
 	clear()
 	print(memory.trait)
-	aff_encad("Inventé et developé par KARIM aka K-A-R-I-M")
+	aff_encad("Inventé et developé par KARIM aka K-A-R-I-M \nSonKa V"+version)
 	print(memory.trait)
 	sleep(2)
-
+"""----------------------presentation demarrage------------------------"""
 def presentation_demarrage():
+	global version
 	sleep(1)
 	clear()
-	messageBvn = "\nBienvenue dans SonKa v1.0"
+	messageBvn = "\nBienvenue dans SonKa V"+version
 	print(messageBvn)
 	sleep(1)
 	clear()
@@ -431,6 +443,96 @@ def presentation_demarrage():
 			nom_styler += ligne
 	print(nom_styler)
 	sleep(2)
+"""----------------------menu parametre------------------------"""
+def parametre():
+	while True:
+		try:
+
+			clear()
+			aff_encad("		Parametre		")
+
+			msgPresentationChoix = memory.trait_2 + "\n"
+			msgPresentationChoix += " 1 - commande\n"
+			msgPresentationChoix += memory.trait_2 + "\n"
+			msgPresentationChoix += " 123 - quitter\n"
+			msgPresentationChoix += memory.trait_2
+
+			aff_encad(msgPresentationChoix)
+
+			choix = int(input())
+
+			if(choix == 1):
+				commande()
+			elif(choix == 123):
+				break
+			else:
+				aff_encad("Saisie incorrecte")
+
+		except Exception as e:
+			print("Erreur :")
+			print(e)
+		sleep(1)
+"""----------------------methode du menu parametre------------------------"""
+#--------menu parametre commande--------
+def commande():
+	while True:
+		try:
+
+			clear()
+			aff_encad("		Parametre Commande		")
+
+			msgPresentationChoix = memory.trait_2 + "\n"
+			msgPresentationChoix += " 1 - voir les commandes actuel\n"
+			msgPresentationChoix += " 2 - changer la touche pause\n"
+			msgPresentationChoix += " 3 - changer la touche next\n"
+			msgPresentationChoix += memory.trait_2 + "\n"
+			msgPresentationChoix += " 123 - quitter\n"
+			msgPresentationChoix += memory.trait_2
+
+			aff_encad(msgPresentationChoix)
+
+			choix = int(input())
+
+			if(choix == 1):
+				aff_commande_touche()
+			elif(choix == 2):
+				change_touche_pause()
+			elif (choix == 3):
+				change_touche_next()
+			elif(choix == 123):
+				break
+			else:
+				aff_encad("Saisie incorrecte")
+
+		except Exception as e:
+			print("Erreur :")
+			print(e)
+		sleep(1)
+"""----------------------methode du menu parametre commande------------------------"""
+def aff_commande_touche():
+	touches = memory.touches_commande
+	str_aff = ""
+	i = 0
+	for nom, touche in touches.items():
+		str_aff += str(i)+" - "+nom+" : "+touche+"\n"
+		i += 1
+	aff_encad(str_aff)
+	input("Appuyer sur entree pour continuer !!")
+
+def change_touche_pause():
+	print("Taper sur la nouvelle touche !!")
+	sleep(1)
+	shortcut = keyboard.read_hotkey()
+	print('Touche selectioner :', shortcut)
+	memory.setDefaultPause(shortcut)
+
+def change_touche_next():
+	print("Taper sur la nouvelle touche !!")
+	sleep(1)
+	shortcut = keyboard.read_hotkey()
+	print('\nTouche selectioner :', shortcut)
+	memory.setDefaultNext(shortcut)
+
 
 main()
 #partie_graphique()

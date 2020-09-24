@@ -8,12 +8,14 @@ from recherche_youtube import RechercheLienYoutube
 from LecteurAudio import LecteurAudio
 import Memory as memory
 
+
 class PlaylistKa():
     memoire = memory.dir_sauvegarde_playlist
 
-    def __init__(self, titre):
+    def __init__(self, titre, momentaner=False):
         self._titre = titre
         self._audios = []
+        self._momentaner = momentaner
 
 
     def ajout(self, audio:AudioKa):
@@ -60,67 +62,106 @@ class PlaylistKa():
                 j -= 1
                 i -= 1
         return succes
+
+    def _net_titre(self, txt: str):
+        titre = " ".join(txt.split())
+        return titre
     """---------------------------"""
 
     def lancer(self, lecteur:LecteurAudio=None):
+        if self._momentaner == False:
+            if lecteur != None:
+                if self.estVide() == False:
 
-        if lecteur != None:
-            if self.estVide() == False:
-                nb = lecteur.getChercheur().getNbRecheche() + 1
+                    lecteur.add_launch(len(self._audios))
 
-                lecteur.add_launch(len(self._audios))
+                    for audio in self._audios:
 
-                for audio in self._audios:
-
-                    titre = audio.getTitre()
-                    url = audio.getUrl()
-
-
-                    lecteur._queue.append(titre)
-
-                    try:
-
-                        lecteur._telecharge_musique(url, nb=nb)
-
-                    except Exception as e:
-
-                        if self._se_termine_par(str(e), "YouTube said: Unable to extract video data"):
-                            lecteur.pause()
-                            # audio erreur
-                            player = vlc.MediaPlayer("./SonKa_sound/erreur_audio_non_telecharger.mp3")
-                            player.play()
-                            sleep(3)
-
-                            # recherche sur youtube de nv lien et telechargement
-                            recherche_rafrai = RechercheLienYoutube()
-                            titre_rafrai, url_rafrai = recherche_rafrai.recherche(titre)
-                            lecteur.pause()
-
-                            audio.setUrl(url_rafrai)
-                            audio.setTitre(titre_rafrai)
-
-                            print("rafrachissement de votre playlist")
-                            lecteur._telecharge_musique(url_rafrai, nb=nb)
-                            
-                            if self._est_sauvegarder():
-                                self.sauvegarder()
+                        titre = audio.getTitre()
+                        url = audio.getUrl()
 
 
-                    print("ajout a la file de lecture")
+                        lecteur.ajt_queue(titre)
+
+                        #cas ou tout va bien
+                        try:
+
+                            lecteur._telecharge_musique(url)
+
+                        #audio n'est plus dispo sur youtube
+                        except Exception as e:
+
+                            if self._se_termine_par(str(e), "YouTube said: Unable to extract video data"):
+                                lecteur.pause()
+                                # audio erreur
+                                player = vlc.MediaPlayer("./SonKa_sound/erreur_audio_non_telecharger.mp3")
+                                player.play()
+                                sleep(3)
+
+                                # recherche sur youtube de nv lien et telechargement
+                                recherche_rafrai = RechercheLienYoutube()
+                                titre_rafrai, url_rafrai = recherche_rafrai.recherche(titre)
+                                lecteur.pause()
+
+                                titre_rafrai = self._net_titre(titre_rafrai)
+
+                                audio.setUrl(url_rafrai)
+                                audio.setTitre(titre_rafrai)
+
+                                print("rafrachissement de votre playlist")
+                                lecteur._telecharge_musique(url_rafrai)
+
+                                if self._est_sauvegarder():
+                                    self.sauvegarder()
 
 
-                    lecteur.getChercheur().addNbRecheche()
-                    nb += 1
+                        print("ajout a la file de lecture")
 
-                    if lecteur.getChercheur().getNbRecheche() == 1:
-                        lecteur.start()
+
+                        lecteur.getChercheur().addNbRecheche()
+
+                        if lecteur.getChercheur().getNbRecheche() == 1:
+                            lecteur.start()
+
+                else:
+                    print("playlist vide")
 
             else:
-                print("playlist vide")
-
+                print("lecteur inexistant")
+            sleep(1)
         else:
-            print("lecteur inexistant")
-        sleep(1)
+            self.__lancer_moment(lecteur)
+
+    def __lancer_moment(self, lecteur:LecteurAudio):
+        if lecteur != None:
+            try:
+                lecteur.add_launch(1)
+
+                chercheur = lecteur.getChercheur()
+
+                result = chercheur.recherche(self._titre)
+
+                url = result[1]
+                titre = self._net_titre(result[0])
+                print(url)
+                print(titre)
+                self._audios.append(AudioKa(titre, url))
+                lecteur.ajt_queue(titre)
+
+                lecteur._telecharge_musique(url)
+
+                lecteur.getChercheur().addNbRecheche()
+
+                if lecteur.getChercheur().getNbRecheche() == 1:
+                    lecteur.start()
+
+            except Exception as e:
+                print("ERREUR : ")
+                print(e)
+        else:
+            print("ERREUR : Lecteur indisponible")
+
+
 
     def _verif_dos(self):
         try:
@@ -130,7 +171,7 @@ class PlaylistKa():
         except Exception as e:
             print("ERREUR :")
             print(e)
-        
+
     def _est_sauvegarder(self):
         # verification du dossier de localisation
         self._verif_dos()

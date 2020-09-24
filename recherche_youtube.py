@@ -48,7 +48,6 @@ class RechercheLienYoutube():
 
         titre, url_trouv = asyncio.get_event_loop().run_until_complete(self.recherche_lien(url))
 
-        self.nb_recherche += 1
 
         return titre, url_trouv
 

@@ -4,8 +4,10 @@ from recherche_youtube import RechercheLienYoutube
 import os
 import youtube_dl
 from time import sleep
-from win10toast import ToastNotifier
+import plyer.platforms.win.notification
+from plyer import notification
 import Memory as memory
+
 
 
 class LecteurAudio(Thread):
@@ -16,21 +18,21 @@ class LecteurAudio(Thread):
 
         self._etat = True
         self._chercheur = RechercheLienYoutube()
-        self._nb_courant_mus = 1
+        self._nb_courant_mus = 0
         self._queue = []
         self._play_obj = None
         #demarrage
         self._demarrage()
-        self._notif = ToastNotifier()
         self._pause = False
         self._cour_playlist = []
         self._nb_cour_playlist_music = None
+
 
     def run(self):
         super().run()
         while self._etat :
             #verification d'existance d'un audio dans la queue
-            if self._nb_courant_mus <= self._chercheur.getNbRecheche():
+            if self._nb_courant_mus < self._chercheur.getNbRecheche():
                 self._play_obj = self.joue()
 
                 #passage automatique au prohcain audio
@@ -111,8 +113,9 @@ class LecteurAudio(Thread):
     '''---------------------Telechargement----------------------'''
 
     # fonction qui telecharge
-    def _telecharge_musique(self, url, nb):
+    def _telecharge_musique(self, url):
 
+        nb = self._chercheur.getNbRecheche()
 
         self._verif_dos()
 
@@ -140,21 +143,6 @@ class LecteurAudio(Thread):
 
 
 
-    # fonction s'occupe de tout ce qui est en rapport avec le telechargement
-    def _telechargeur_automatique(self, txt: str):
-
-        result = self._chercheur.recherche(txt)
-
-        nb = self._chercheur.getNbRecheche()
-
-        url = result[1]
-        titre = self._net_titre(result[0])
-        print(url)
-        print(titre)
-        self._queue.append(titre)
-
-        self._telecharge_musique(url, nb=nb)
-
     '''---------------------Gestion des fichiers audio----------------------'''
     def _verif_dos(self):
         try:
@@ -179,12 +167,9 @@ class LecteurAudio(Thread):
 
         nb = self._nb_courant_mus
 
-
-
-        if nb != 1:
+        if nb != 0:
             self._supppr_ancien_audio()
             self.suppr_queue()
-
 
 
         filename = 'song_' + str(nb) + '_nb.mp3'
@@ -193,7 +178,7 @@ class LecteurAudio(Thread):
 
         self._aff_encad("Lancement de : " + self._queue[0])
 
-        self._notif.show_toast("SonKa", self._queue[0], duration=3)
+        notification.notify("SonKa", self._queue[0], app_icon=memory.chemin_cour+"/images/SonKa.ico", app_name="SonKa")
 
 
         return player
@@ -244,31 +229,11 @@ class LecteurAudio(Thread):
 
     def next_playlist(self):
         print("pas encore dispo car refonte total necessaire")
-        """if self._nb_cour_playlist_music == None:
-            self._nb_cour_playlist_music = self._cour_playlist[0]
-        nb = self._nb_cour_playlist_music
-        if nb == 1:
-            self.next()
-        else:
-            for i in range(nb):
-                if i != 0:
-                    self._verif_dos()
-                    with os.scandir("./") as fichiers:
-                        for fichier in fichiers:
-                            if fichier.name == 'song_' + str(i+self._nb_courant_mus) + '_nb.mp3':
-                                print(fichier.name)
-                                sleep(3)                     
-        self._nb_courant_mus += nb
-        next()
-        
-        self._cour_playlist.pop(0)
-        self._nb_cour_playlist_music = self._cour_playlist[0]"""
 
     '''---------------------Gestion Queue----------------------'''
-
-    def ajt_queue(self, txt: str):
-        self._telechargeur_automatique(txt)
-        print("ajout a la file de lecture")
+    def ajt_queue(self, titre: str):
+        self._queue.append(titre)
+        print("ajouter a la liste de lecture")
 
     def suppr_queue(self):
         self._queue.pop(0)

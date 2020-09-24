@@ -3,6 +3,7 @@
 .idea
 *.log
 __pycache__
+venv
 
 # DEV file #
 ############
@@ -18,8 +19,12 @@ audio
 memoire_playlist
 nom
 images/*.png
+images/*.ico
 debug
 data
+memoire_touche
+memoire_touche/*.json
+memoire_touche/*.txt
 
 
 
